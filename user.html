@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Copiar Código</title>
+    <style>
+        .code-container {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        .code-container button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap; /* Asegura que el texto se ajuste correctamente */
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Script para usuario de bypass</h1>
+
+    <div class="code-container">
+        <pre id="codeBlock">curl https://raw.githubusercontent.com/aulaslaboratorios/user/main/user.sh -o user.sh && chmod +x ./user.sh && ./user.sh
+        </pre>
+        <button onclick="copyCode()">Copiar código</button>
+    </div>
+
+    <script>
+        function copyCode() {
+            // Seleccionar el contenido del bloque de código
+            var code = document.getElementById("codeBlock").textContent.trim();
+            // Intentar copiar al portapapeles
+            navigator.clipboard.writeText(code).then(function() {
+                alert("¡Código copiado al portapapeles!");
+            }).catch(function(error) {
+                console.error("Error al copiar el código: ", error);
+                alert("Error al copiar el código. Por favor, copia manualmente.");
+            });
+        }
+    </script>
+
+</body>
+</html>
