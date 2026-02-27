@@ -1,94 +1,91 @@
 #!/bin/bash
+# Recovery-friendly LAB IP chooser (ifconfig + route)
+# Gateway fijo: 10.142.114.1
+# Máscara: 255.255.254.0
+set -u
 
 MASK="255.255.254.0"
 GATEWAY="10.142.114.1"
 
-ip2int() {
-  IFS='.' read -r a b c d <<EOF
-$1
-EOF
-  echo $(( (a<<24) + (b<<16) + (c<<8) + d ))
-}
+echo ""
+echo "==================================="
+echo "  UPC Recovery - Config Red por LAB"
+echo "==================================="
+echo ""
 
-int2ip() {
-  ip=$1
-  echo "$(( (ip>>24)&255 )).$(( (ip>>16)&255 )).$(( (ip>>8)&255 )).$(( ip&255 ))"
-}
+# ---------- IP helpers ----------
+ip2int() { IFS='.' read -r a b c d <<<"$1"; echo $(( (a<<24)+(b<<16)+(c<<8)+d )); }
+int2ip() { local ip=$1; echo "$((ip>>24&255)).$((ip>>16&255)).$((ip>>8&255)).$((ip&255))"; }
 
+# ---------- Detect iface ----------
 detect_iface() {
   if ifconfig en0 >/dev/null 2>&1; then
-    echo "en0"
-    return
+    echo "en0"; return
   fi
+  local iface
   iface="$(ifconfig -l 2>/dev/null | tr " " "\n" | grep -E "^en[0-9]+$" | head -n 1)"
-  if [ -n "$iface" ]; then
-    echo "$iface"
-  else
-    echo "en0"
-  fi
+  if [ -n "${iface:-}" ]; then echo "$iface"; else echo "en0"; fi
 }
 
-choose_tipo() {
-  echo "==================================="
-  echo " Configurar Red - macOS Recovery"
-  echo "==================================="
-  echo ""
-  echo "Seleccione tipo de usuario:"
-  echo "1) Alumno"
-  echo "2) Docente"
-  echo ""
-  printf "Opción (1/2): "
-  read tipo
-  echo "$tipo"
-}
+# ---------- Menú tipo ----------
+echo "Seleccione tipo de usuario:"
+echo "1) Alumno  (LAB + Posición)"
+echo "2) Docente (LAB -> SERV)"
+printf "Opción (1/2): "
+IFS= read -r TIPO || true
+echo ""
 
-choose_lab() {
-  echo ""
-  echo "Seleccione el laboratorio:"
-  echo "1) SB409"
-  echo "2) SB410"
-  echo "3) SB502"
-  echo "4) SB509"
-  echo "5) SB510"
-  echo "6) SB603"
-  echo "7) SB703"
-  echo "8) SB704"
-  echo "9) SB707"
-  echo "10) SB708"
-  echo "11) SB801"
-  echo "12) SB802"
-  echo ""
-  printf "Número de laboratorio: "
-  read labn
+# Validación tipo
+if [ "${TIPO:-}" != "1" ] && [ "${TIPO:-}" != "2" ]; then
+  echo "❌ Opción inválida: ${TIPO:-<vacio>}"
+  exit 1
+fi
 
-  case "$labn" in
-    1)  echo "SB409" ;;
-    2)  echo "SB410" ;;
-    3)  echo "SB502" ;;
-    4)  echo "SB509" ;;
-    5)  echo "SB510" ;;
-    6)  echo "SB603" ;;
-    7)  echo "SB703" ;;
-    8)  echo "SB704" ;;
-    9)  echo "SB707" ;;
-    10) echo "SB708" ;;
-    11) echo "SB801" ;;
-    12) echo "SB802" ;;
-    *)  echo "INVALID" ;;
-  esac
-}
+# ---------- Menú LAB ----------
+echo "Seleccione el laboratorio:"
+echo " 1) SB409"
+echo " 2) SB410"
+echo " 3) SB502"
+echo " 4) SB509"
+echo " 5) SB510"
+echo " 6) SB603"
+echo " 7) SB703"
+echo " 8) SB704"
+echo " 9) SB707"
+echo "10) SB708"
+echo "11) SB801"
+echo "12) SB802"
+printf "Número de laboratorio: "
+IFS= read -r LABN || true
+echo ""
 
+case "${LABN:-}" in
+  1) LAB="SB409" ;;
+  2) LAB="SB410" ;;
+  3) LAB="SB502" ;;
+  4) LAB="SB509" ;;
+  5) LAB="SB510" ;;
+  6) LAB="SB603" ;;
+  7) LAB="SB703" ;;
+  8) LAB="SB704" ;;
+  9) LAB="SB707" ;;
+  10) LAB="SB708" ;;
+  11) LAB="SB801" ;;
+  12) LAB="SB802" ;;
+  *) echo "❌ Laboratorio inválido: ${LABN:-<vacio>}"; exit 1 ;;
+esac
+
+# ---------- Rango alumnos ----------
 lab_range() {
-  lab="$1"
-  case "$lab" in
+  case "$1" in
     SB409) echo "10.142.114.195 10.142.114.214" ;;
-    SB410) echo "10.142.114.6 10.142.114.25" ;;
-    SB502) echo "10.142.116.72 10.142.116.78" ;;
-    SB509) echo "10.142.114.27 10.142.114.46" ;;
-    SB510) echo "10.142.114.48 10.142.114.67" ;;
-    SB603) echo "10.142.114.69 10.142.114.88" ;;
-    SB703) echo "10.142.115.7 10.142.115.26" ;;
-    SB704) echo "10.142.114.90 10.142.114.109" ;;
+    SB410) echo "10.142.114.6   10.142.114.25" ;;
+    SB502) echo "10.142.116.72  10.142.116.78" ;;
+    SB509) echo "10.142.114.27  10.142.114.46" ;;
+    SB510) echo "10.142.114.48  10.142.114.67" ;;
+    SB603) echo "10.142.114.69  10.142.114.88" ;;
+    SB703) echo "10.142.115.7   10.142.115.26" ;;
+    SB704) echo "10.142.114.90  10.142.114.109" ;;
     SB707) echo "10.142.114.111 10.142.114.130" ;;
     SB708) echo "10.142.114.132 10.142.114.151" ;;
     SB801) echo "10.142.114.153 10.142.114.172" ;;
@@ -97,9 +94,9 @@ lab_range() {
   esac
 }
 
+# ---------- IP SERV docentes ----------
 lab_serv_ip() {
-  lab="$1"
-  case "$lab" in
+  case "$1" in
     SB409) echo "10.142.114.194" ;;
     SB410) echo "10.142.114.5" ;;
     SB502) echo "10.142.116.71" ;;
@@ -109,109 +106,76 @@ lab_serv_ip() {
     SB703) echo "10.142.115.6" ;;
     SB704) echo "10.142.114.89" ;;
     SB707) echo "10.142.114.110" ;;
-    SB708) echo "10.142.114.131" ;;  # corregido
+    SB708) echo "10.142.114.131" ;;  # ✅ corregido
     SB801) echo "10.142.114.152" ;;
     SB802) echo "10.142.114.173" ;;
     *) echo "" ;;
   esac
 }
 
-calc_student_ip() {
-  lab="$1"
-  pos="$2"
-
-  if ! echo "$pos" | grep -Eq '^[0-9]+$'; then
-    echo "INVALID"
-    return
-  fi
-  if [ "$pos" -lt 1 ]; then
-    echo "INVALID"
-    return
-  fi
-
-  range="$(lab_range "$lab")"
-  start="$(echo "$range" | awk "{print \$1}")"
-  end="$(echo "$range" | awk "{print \$2}")"
-
-  if [ -z "$start" ] || [ -z "$end" ]; then
-    echo "INVALID"
-    return
-  fi
-
-  si="$(ip2int "$start")"
-  ei="$(ip2int "$end")"
-  total=$((ei - si + 1))
-
-  if [ "$pos" -gt "$total" ]; then
-    echo "OUT"
-    return
-  fi
-
-  sel=$((si + pos - 1))
-  int2ip "$sel"
-}
-
-apply_config() {
-  iface="$1"
-  ip="$2"
-
-  echo ""
-  echo "Aplicando..."
-  echo "IFACE : $iface"
-  echo "IP    : $ip"
-  echo "MASK  : $MASK"
-  echo "GW    : $GATEWAY"
+# ---------- Calcular IP ----------
+if [ "$TIPO" = "1" ]; then
+  printf "Ingrese posición (1..N): "
+  IFS= read -r POS || true
   echo ""
 
-  ifconfig "$iface" "$ip" netmask "$MASK" up
-  route delete default >/dev/null 2>&1
-  route add default "$GATEWAY" >/dev/null 2>&1
-
-  echo "---- Verificación ----"
-  ifconfig "$iface" | head -n 8
-  echo ""
-  netstat -rn | head -n 15
-  echo ""
-  echo "✅ Listo."
-}
-
-# ================= MAIN =================
-tipo="$(choose_tipo)"
-lab="$(choose_lab)"
-
-if [ "$lab" = "INVALID" ]; then
-  echo "❌ Laboratorio inválido."
-  exit 1
-fi
-
-iface="$(detect_iface)"
-
-if [ "$tipo" = "1" ]; then
-  echo ""
-  printf "Posición del alumno: "
-  read pos
-  ip="$(calc_student_ip "$lab" "$pos")"
-
-  if [ "$ip" = "INVALID" ]; then
-    echo "❌ Posición inválida o LAB inválido."
+  if ! echo "${POS:-}" | grep -Eq "^[0-9]+$"; then
+    echo "❌ Posición inválida: ${POS:-<vacio>}"
     exit 1
   fi
-  if [ "$ip" = "OUT" ]; then
-    echo "❌ Posición fuera del rango para $lab."
+  if [ "$POS" -lt 1 ]; then
+    echo "❌ Posición debe ser >= 1"
     exit 1
   fi
 
-  apply_config "$iface" "$ip"
-
-elif [ "$tipo" = "2" ]; then
-  ip="$(lab_serv_ip "$lab")"
-  if [ -z "$ip" ]; then
-    echo "❌ No hay IP SERV para $lab."
+  RANGE="$(lab_range "$LAB")"
+  START="$(echo "$RANGE" | awk "{print \$1}")"
+  END="$(echo "$RANGE" | awk "{print \$2}")"
+  if [ -z "${START:-}" ] || [ -z "${END:-}" ]; then
+    echo "❌ No hay rango definido para $LAB"
     exit 1
   fi
 
-  apply_config "$iface" "$ip"
+  SI="$(ip2int "$START")"
+  EI="$(ip2int "$END")"
+  TOTAL=$((EI - SI + 1))
+
+  if [ "$POS" -gt "$TOTAL" ]; then
+    echo "❌ Posición fuera de rango para $LAB (máx $TOTAL)"
+    exit 1
+  fi
+
+  IP="$(int2ip $((SI + POS - 1)))"
 else
-  echo "❌ Opción inválida."
-  exit 1
+  IP="$(lab_serv_ip "$LAB")"
+  if [ -z "${IP:-}" ]; then
+    echo "❌ No hay IP SERV para $LAB"
+    exit 1
+  fi
 fi
+
+IFACE="$(detect_iface)"
+
+echo "-----------------------------------"
+echo "Tipo   : $([ "$TIPO" = "1" ] && echo Alumno || echo Docente)"
+echo "LAB    : $LAB"
+echo "IFACE  : $IFACE"
+echo "IP     : $IP"
+echo "MASK   : $MASK"
+echo "GW     : $GATEWAY"
+echo "-----------------------------------"
+echo ""
+
+# ---------- Aplicar (tu estructura ganadora) ----------
+ifconfig "$IFACE" "$IP" netmask "$MASK" up
+route delete default >/dev/null 2>&1 || true
+route add default "$GATEWAY" >/dev/null 2>&1 || true
+
+echo "✅ Aplicado."
+echo ""
+echo "---- ifconfig (resumen) ----"
+ifconfig "$IFACE" | head -n 8
+echo ""
+echo "---- rutas (resumen) ----"
+netstat -rn | head -n 15
+echo ""
